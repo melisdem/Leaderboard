@@ -7,6 +7,9 @@ class DataService {
   getWeek() {
     return http.get(`/users/endOfTheWeek`)
   }
+  getRandom() {
+    return http.get(`/users/giveRandomScore`)
+  }
   get(id) {
     return http.get(`/users/${id}`)
   }

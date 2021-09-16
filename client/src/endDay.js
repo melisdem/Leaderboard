@@ -29,9 +29,7 @@ class EndDay extends Component {
 
   render() {
     return(
-      <React.StrictMode>
-        <div>Hello from endDay</div>
-      </React.StrictMode>
+      <div>Hello from endDay</div>
     )
   }
 }

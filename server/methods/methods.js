@@ -30,53 +30,81 @@ const findUser = async (n) => {
   return await user[0]
 }
 
-const listLeaderboard = async(myId) => {
-  let pricePool = await prizePool();
-  let totalPlayer = await zcountAsync("zset", 0, Infinity);
-  let first100Obj = [];
-  let first100 = await  zrevrangeAsync("zset", 0, 99);
-  let me = await zrevrankAsync("zset", myId);
 
-
-  for (var i = 0; i < 100; i++) {
-    let arrayOfObj = {};
-    let yesterdayRank = await hgetAsync(first100[i], "yesterdayRank");
-    arrayOfObj.id = first100[i];
-    arrayOfObj.username = await hgetAsync(first100[i], "username");
-    arrayOfObj.country = await hgetAsync(first100[i], "country");
-    arrayOfObj.money = await hgetAsync(first100[i], "money");
-    arrayOfObj.score = await zscoreAsync("zset", first100[i]);
-    arrayOfObj.rank = await zrevrankAsync("zset", first100[i]);
-    arrayOfObj.dailyDiff = await (Number(arrayOfObj.rank)-Number(yesterdayRank));
-    await first100Obj.push(arrayOfObj);
-  }
-
-  if (97 < me ) {
-    console.log("true");
-    let meAround = {};
-    if (me  == totalPlayer-1) {
-      meAround = await zrevrangeAsync("zset", me-3, me+1);
-    } else if (me  == totalPlayer) {
-      meAround = await zrevrangeAsync("zset", me-3, me);
+const constructObject = async (elm, myRank) => {
+    let objOfArray = {};
+    let yesterdayRank = await hgetAsync(elm, "yesterdayRank");
+    let rank = await zrevrankAsync("zset", elm);
+    objOfArray.id = elm;
+    objOfArray.username = await hgetAsync(elm, "username");
+    objOfArray.country = await hgetAsync(elm, "country");
+    objOfArray.money = await hgetAsync(elm, "money");
+    objOfArray.score = await zscoreAsync("zset", elm);
+    objOfArray.rank = await rank+1;
+    objOfArray.dailyDiff = await (-Number(objOfArray.rank)+1+Number(yesterdayRank));
+    if (myRank == rank) {
+      objOfArray.isMe = await true;
     } else {
-      meAround = await zrevrangeAsync("zset", me-3, me+2);
+      objOfArray.isMe = await false;
     }
-    for (var i = 0; i < meAround.length; i++) {
-      let yesterdayRank = await hgetAsync(meAround[i], "yesterdayRank");
-      let arrayOfObj = {};
-      arrayOfObj.id = meAround[i];
-      arrayOfObj.username = await hgetAsync(meAround[i], "username");
-      arrayOfObj.country = await hgetAsync(meAround[i], "country");
-      arrayOfObj.money = await hgetAsync(meAround[i], "money");
-      arrayOfObj.score = await zscoreAsync("zset", meAround[i]);
-      arrayOfObj.rank = await zrevrankAsync("zset", meAround[i]);
-      arrayOfObj.dailyDiff = await (Number(arrayOfObj.rank)-Number(yesterdayRank));
-      await first100Obj.push(arrayOfObj);
-    }
-  }
-  await first100Obj.push(pricePool)
-  return first100Obj
+    return objOfArray;
 }
+
+const listLeaderboard = async(myId) => {
+  let first100Obj = [];
+  let totalPlayer = await zcountAsync("zset", 0, Infinity);
+  let myRank = await zrevrankAsync("zset", myId);
+  let first100 = await  zrevrangeAsync("zset", 0, 99);
+
+  if (myRank<=97) {  
+    for (var i = 0; i < 100; i++) {
+      let player = await constructObject(first100[i],myRank);
+      await first100Obj.push(player);
+    }
+  } 
+  else if (98<=myRank && myRank<=102) {
+    for (var i = 0; i < myRank+3; i++) {
+      let meAround = await  zrevrangeAsync("zset", 0, myRank+2);
+      let player = await constructObject(meAround[i],myRank);
+      await first100Obj.push(player);
+    }        
+  } 
+  else if (myRank>=103 && myRank<totalPlayer-2) {
+    for (var i = 0; i < 100; i++) {
+      let player = await constructObject(first100[i],myRank);
+      await first100Obj.push(player);
+    };
+    for (var i = 0; i < 6; i++) {
+      let meAround = await  zrevrangeAsync("zset", myRank-3, myRank+2);
+      let player = await constructObject(meAround[i],myRank);
+      await first100Obj.push(player);
+    }    
+  } 
+  else if (myRank == totalPlayer-2) {
+    for (var i = 0; i < 100; i++) {
+      let player = await constructObject(first100[i],myRank);
+      await first100Obj.push(player);
+    };
+    let meAround = await  zrevrangeAsync("zset", myRank-3, myRank+1);
+    for (var i = 0; i < 5; i++) {
+      let player = await constructObject(meAround[i],myRank);
+      await first100Obj.push(player);
+    } 
+  }
+  else if (myRank == totalPlayer-1) {
+    for (var i = 0; i < 100; i++) {
+      let player = await constructObject(first100[i],myRank);
+      await first100Obj.push(player);
+    };
+    let meAround = await  zrevrangeAsync("zset", myRank-3, myRank);
+    for (var i = 0; i < 4; i++) {
+      let player = await constructObject(meAround[i],myRank);
+      await first100Obj.push(player);
+    } 
+  }      
+  return await first100Obj
+}
+
 
 // Prize Pool ******************************************************************************
 
@@ -156,47 +184,74 @@ let endOfTheDay = async () => {
   console.log("day ended")
 }
 
-//Score increasement for redis 15 min **********************************************************************
+//Score increasement for redis **********************************************************************
  
 let giveRandomScore = async () => {
   let totalPlayer = await zcountAsync("zset", 0, Infinity);
   let n = Math.floor(Math.random()*totalPlayer);
-  console.log(n);
   let randomPlayer = await findUser(n);
-  console.log(randomPlayer);
   let nPlayerScore = await zscoreAsync("zset", randomPlayer);
-  console.log(nPlayerScore);
   let numbernPlayerScore = await Number(nPlayerScore);
   let newScore = Math.floor(Math.random()*5000)+numbernPlayerScore;
-  console.log(newScore);
   await zaddAsync("zset", newScore, `${randomPlayer}`);
+  console.log(randomPlayer);
+  console.log(newScore);
+};
+
+let giveRandomScore100 = async () => {
+  for (var i = 0; i < 100; i++) {
+   await giveRandomScore();
+  }
+   console.log("done")
 }
 
-  // Reference: https://levelup.gitconnected.com/how-to-turn-settimeout-and-setinterval-into-promises-6a4977f0ace3
-  const asyncInterval = async (callback, ms, triesLeft = 5) => {
-    return new Promise((resolve, reject) => {
-      const interval = setInterval(async () => {
-        if (await callback()) {
-          resolve();
-          clearInterval(interval);
-        } else if (triesLeft <= 1) {
-          reject();
-          clearInterval(interval);
-        }
-        triesLeft--;
-      }, ms);
-    });
-  }
+// setInterval for random scores, endOfTheDay and endOfTheWeek
 
-  const wrapper1 = async () => {
-    try {
-      await asyncInterval(giveRandomScore, 100, 5);
-    } catch (e) {
-      console.log('error handling');
-    }
-    console.log("Done!");
+const asyncInterval = async (callback, ms, triesLeft = 5) => {
+  return new Promise((resolve, reject) => {
+    const interval = setInterval(async () => {
+      if (await callback()) {
+        resolve();
+        clearInterval(interval);
+      } else if (triesLeft <= 1) {
+        reject();
+        clearInterval(interval);
+      }
+      triesLeft--;
+    }, ms);
+  });
+}
+
+const wrapper1 = async () => {
+  try {
+    await asyncInterval(giveRandomScore100, 900000, 100000);
+  } catch (e) {
+    console.log('error handling');
   }
-  // wrapper1();
+  console.log("Done!");
+}
+wrapper1();
+
+
+const wrapper2 = async () => {
+  try {
+    await asyncInterval(endOfTheDay, 86400000, 100000);
+  } catch (e) {
+    console.log('error handling');
+  }
+  console.log("Done!");
+}
+wrapper2();
+
+const wrapper3 = async () => {
+  try {
+    await asyncInterval(endOfTheWeek, 604800000, 100000);
+  } catch (e) {
+    console.log('error handling');
+  }
+  console.log("Done!");
+}
+wrapper3();
 
 
 // Export Methods ****************************************************
@@ -242,6 +297,10 @@ exports.endOfTheWeek = (req, res) => {
 
 exports.endOfTheDay = (req, res) => {
    endOfTheDay();
+};
+
+exports.giveRandomScore = (req, res) => {
+   giveRandomScore100();
 };
 
 

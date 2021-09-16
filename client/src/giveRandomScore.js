@@ -1,11 +1,11 @@
 import React, {Component} from "react";
 import DataService from "./service";
 
-class EndWeek extends Component {
+class giveRandom extends Component {
 
   constructor(props) {
     super(props);
-    this.getWeek = this.getWeek.bind(this);
+    this.getRandom = this.getRandom.bind(this);
 
     this.state = {
       data: []
@@ -13,11 +13,11 @@ class EndWeek extends Component {
   }
 
   componentDidMount() {
-    this.getWeek(this.props.match.params);
+    this.getRandom(this.props.match.params);
   }
 
-  getWeek() {
-    DataService.getWeek().then(response => {
+  getRandom() {
+    DataService.getRandom().then(response => {
       this.setState({
         data:response.data
       })
@@ -29,8 +29,9 @@ class EndWeek extends Component {
 
   render() {
     return(
-      <div>Hello from endweek</div>
+      <div>Hello from giverandom score</div>
     )
   }
 }
-export default EndWeek;
+
+export default giveRandom;
