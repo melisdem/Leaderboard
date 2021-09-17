@@ -29,7 +29,7 @@ class EndWeek extends Component {
 
   render() {
     return(
-      <div>Hello from endweek</div>
+      <div>Week ended, ranks are unavailable right now</div>
     )
   }
 }

@@ -34,18 +34,26 @@ export default class PlayerList extends Component {
     this.state = {
       columnDefs: [
         { field: 'isMe',
-          hide:false
+          hide:true
         },
         { field: 'rank',
-          pinned: 'left'
+          pinned: 'left',
+          maxWidth: 69,
+          suppressSizeToFit: true
         },
         {
-          field: 'country'
+          field: 'country',
+          width:90,
+          resizable:true
+
         },
         { field: 'username' },
-        { field: 'score' },
-        { field: 'id' },
+        { field: 'score',
+          maxWidth:70
+        },
         { field: 'dailyDiff',
+          maxWidth:100,
+          minWidth:50,
           cellRenderer: "dailyDiffCellRenderer",
           cellStyle: params => {
             if (params.value === 0) {
@@ -59,14 +67,19 @@ export default class PlayerList extends Component {
           }
         },
         { field: 'money',
-          pinned: 'right'
+          maxWidth: 90
         }
       ],
       defaultColDef: {
-        flex: 1
+        flex:1
       },
       components: {
       dailyDiffCellRenderer: dailyDiffCellRenderer
+      },
+      rowClassRules: {
+        'me-style': function(params) {
+          return params.data.isMe === true
+        }
       },
       Users: []
     };
@@ -90,9 +103,10 @@ export default class PlayerList extends Component {
   render() {
     const Players = this.state.Users;
     return(
-      <div className="ag-theme-alpine" style={{ width: '100%', height: '100%' }}>
+      <div id="my-grid" className="ag-theme-alpine" style={{ width: '100%', height: '100%' }}>
          <AgGridReact
             columnDefs={this.state.columnDefs}
+            rowClassRules={this.state.rowClassRules}
             defaultColDef={this.state.defaultColDef}
             onGridReady={this.onGridReady}
             rowData={Players}
