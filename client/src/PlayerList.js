@@ -38,14 +38,19 @@ export default class PlayerList extends Component {
         },
         { field: 'rank',
           pinned: 'left',
-          maxWidth: 69,
+          width: 69,
+          resizable:true,
           suppressSizeToFit: true
         },
         {
           field: 'country',
           width:90,
+          maxWidth:100,
           resizable:true
 
+        },
+        { field: 'id',
+          resizable:true
         },
         { field: 'username' },
         { field: 'score',

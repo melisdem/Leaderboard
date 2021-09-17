@@ -2,7 +2,7 @@ import http from "./http-common";
 
 class DataService {
   getDay() {
-    return http.get(`users/endOfTheDay`)
+    return http.get(`/users/endOfTheDay`)
   }
   getWeek() {
     return http.get(`/users/endOfTheWeek`)

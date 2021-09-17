@@ -12,7 +12,7 @@ var corsOptions = {
 };
 
 mongoose.Promise = global.Promise;
-mongoose.connect("mongodb://root:159753mel@localhost:27017/Leaderboard?authSource=admin");
+mongoose.connect("mongodb://root:localhost:27017/Leaderboard?authSource=admin");
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function() {

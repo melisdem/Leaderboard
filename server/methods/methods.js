@@ -25,11 +25,23 @@ const zcountAsync = promisify(client.zcount).bind(client);
 
 // functions and varibles **********************************************
 
+//Adding players to Redis sorted Sets for leaderboard ****************************************************
+
+const addingRedis = async () => {
+  User.find({}, function(err, users) {
+    users.forEach(async function (user) {
+      await zaddAsync("zset", 0, user._id.toString());
+      await hmsetAsync(user._id.toString(), "username", user.username, "country", user.country, "money", user.money, "yesterdayRank", 0);
+    });
+  });
+}
+
+addingRedis()
+
 const findUser = async (n) => {
   let user = await zrevrangeAsync("zset",n ,n);
   return await user[0]
 }
-
 
 const constructObject = async (elm, myRank) => {
     let objOfArray = {};
@@ -127,20 +139,25 @@ const distributeFirst3 = async (perc, id) => {
   let price = await prizePool();
   let player = await  User.findOne({_id:id});
   let playerMoney = await Number(player.money)+price*perc/100;
+  console.log(playerMoney);
   let updateMoney = await User.updateOne({_id:id}, {$set:{money:Math.round(playerMoney)}});
-  await player.save()
+  await player.save();
+  let redisPlayer = await hsetAsync(id, "money", playerMoney);
 }
 
 const distribute = async (money, id) => {
   let player = await  User.findOne({_id:id});
   let playerMoney = await Number(player.money)+money;
   let updateMoney = await User.updateOne({_id:id}, {$set:{money:Math.round(playerMoney)}});
-  await player.save()
+  await player.save();
+  let redisPlayer = await hsetAsync(id, "money", playerMoney);
 }
 
 const findAndGiveMoney = async () => {
   let price = await prizePool();
+  console.log(price);
   let champ = await  findUser(0);
+  console.log(champ);
   await distributeFirst3(20,champ);
   let second = await  findUser(1);
   await distributeFirst3(15,second);
@@ -149,26 +166,27 @@ const findAndGiveMoney = async () => {
   for (var i = 3; i < 100; i++) {
     let n = await findUser(i);
     await distribute((100-i)*price/4753,n)
-  }
+  };
 }
 
-//Adding players to Redis sorted Sets for leaderboard ****************************************************
-
-const addingRedis = async () => {
-  User.find({}, function(err, users) {
-    users.forEach(async function (user) {
-      await zaddAsync("zset", 0, user._id.toString());
-      await hmsetAsync(user._id.toString(), "username", user.username, "country", user.country, "money", user.money, "yesterdayRank", 0);
-    });
-    // console.log(userId)
-  });
-}
 
 // End of the week ************************************************
 
+let endWeek = async () => {
+  let users = await zrevrangeAsync("zset", 0, -1);
+  for (var i = 0; i < users.length; i++) {
+    let user = await users[i];
+    // await hsetAsync(user, "yesterdayRank", 0);
+    await zaddAsync("zset",0,`${user}`);
+    let yesterdayRank = await zrevrankAsync("zset" ,user);
+    await hsetAsync(user, "yesterdayRank", yesterdayRank);
+  }
+  console.log("week ended")  
+}
+
 let endOfTheWeek = async () => {
   await findAndGiveMoney();
-  await addingRedis();
+  await endWeek();
   console.log("week ended")
 }
 
@@ -183,6 +201,7 @@ let endOfTheDay = async () => {
   }
   console.log("day ended")
 }
+
 
 //Score increasement for redis **********************************************************************
  
@@ -204,6 +223,18 @@ let giveRandomScore100 = async () => {
   }
    console.log("done")
 }
+
+// Find random 5 user
+let random5id = async () => {
+  let users = [] ;
+  for (var i = 0; i < 5; i++) {
+    let random = Math.round(Math.random()*10000);
+    let user = await findUser(random);
+    users.push(user);
+  }
+  return users
+}
+
 
 // setInterval for random scores, endOfTheDay and endOfTheWeek
 
@@ -256,34 +287,6 @@ wrapper3();
 
 // Export Methods ****************************************************
 
-exports.findAllUsers = (req, res) => {
-  User.find()
-    .then(data => {
-      res.send(data);
-    })
-    .catch(err => {
-      res.status(500).send({
-        message: err.message || "Something went wrong"
-      });
-    });
-};
-
-exports.findOne = (req, res) => {
-  console.log(req.params)
-  const id = req.params.id;
-  User.findById(id)
-    .then(data => {
-      if(!data) {
-        res.status(404).send({message:"Not found"});
-      } else {
-        res.send(data)
-      }
-    })
-    .catch(err => {
-      res.status(500).send({message:"Something went wrong"})
-    })
-};
-
 exports.find = (req, res) => {
     const id = req.params.id;
     listLeaderboard(id).then(data => {
@@ -292,17 +295,25 @@ exports.find = (req, res) => {
 };
 
 exports.endOfTheWeek = (req, res) => {
-   endOfTheWeek();
+  endOfTheWeek();
+  random5id().then(data => {
+   res.json(data)
+  })
 };
 
 exports.endOfTheDay = (req, res) => {
-   endOfTheDay();
+  endOfTheDay();
+  random5id().then(data => {
+    res.json(data)
+  })
 };
 
 exports.giveRandomScore = (req, res) => {
    giveRandomScore100();
+   random5id().then(data => {
+    res.json(data)
+   })   
 };
-
 
 
 
