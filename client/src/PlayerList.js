@@ -117,6 +117,8 @@ export default class PlayerList extends Component {
             rowData={Players}
             components={this.state.components}
           />
+          <a href="https://icons8.com/icon/100000/up">Up icon by Icons8</a>
+          <a href="https://icons8.com/icon/99271/down">Down icon by Icons8</a>
       </div>
     )
   }
